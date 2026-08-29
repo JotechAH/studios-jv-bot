@@ -75,6 +75,18 @@ def col_letter(index: int) -> str:
     return letters
 
 
+def formula_arg_separator(sh: gspread.Spreadsheet) -> str:
+    """
+    Google Sheets attend un séparateur d'arguments de formule qui dépend de la locale du
+    classeur : virgule "," pour les locales anglophones, point-virgule ";" pour la plupart
+    des locales européennes (dont fr_FR) — sinon erreur "Formula parse error" à l'écriture
+    via l'API, même si la formule est syntaxiquement correcte en anglais.
+    """
+    meta = sh.fetch_sheet_metadata()
+    locale = meta.get("properties", {}).get("locale", "en_US")
+    return "," if locale.lower().startswith("en") else ";"
+
+
 def get_native_table(sh: gspread.Spreadsheet, sheet_id: int) -> dict | None:
     """
     Retourne l'objet "Table" natif (Insert > Table dans Sheets) défini sur la feuille

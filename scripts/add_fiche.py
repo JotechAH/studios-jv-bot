@@ -16,7 +16,7 @@ import re
 import sys
 
 import gspread
-from sheet_client import col_letter, find_name_column, main_sheet_name, normalize, open_sheet
+from sheet_client import col_letter, find_name_column, formula_arg_separator, main_sheet_name, normalize, open_sheet
 
 FORBIDDEN_TAB_CHARS = re.compile(r"[\[\]\:\*\?/\\]")
 
@@ -55,7 +55,8 @@ def main() -> None:
 
     linked = False
     if target_row:
-        formula = f'=HYPERLINK("#gid={gid}", "{studio_name}")'
+        sep = formula_arg_separator(sh)
+        formula = f'=HYPERLINK("#gid={gid}"{sep} "{studio_name}")'
         ws_nouveau.update(
             f"{col_letter(name_col)}{target_row}", [[formula]], value_input_option="USER_ENTERED"
         )
