@@ -3,7 +3,8 @@ Client d'accès à Google Sheets via un compte de service.
 
 Auth (l'une des deux, dans cet ordre de priorité) :
 - GOOGLE_SERVICE_ACCOUNT_JSON : le contenu JSON complet de la clé, en une variable
-  d'environnement (c'est ce qu'on utilise pour les secrets GitHub / routines cloud).
+  d'environnement (c'est ce qu'on utilise dans l'environnement cloud Claude Code / les
+  routines).
 - GOOGLE_SERVICE_ACCOUNT_FILE : chemin local vers le fichier .json de la clé
   (pratique en local, le fichier ne doit JAMAIS être commité — voir .gitignore).
 
@@ -40,3 +41,48 @@ def open_sheet() -> gspread.Spreadsheet:
     if not spreadsheet_id:
         raise RuntimeError("Définis la variable d'environnement SPREADSHEET_ID.")
     return get_client().open_by_key(spreadsheet_id)
+
+
+def get_native_table(sh: gspread.Spreadsheet, sheet_id: int) -> dict | None:
+    """
+    Retourne l'objet "Table" natif (Insert > Table dans Sheets) défini sur la feuille
+    d'id `sheet_id`, s'il y en a un. Retourne None si la feuille n'a pas de Table native
+    (juste des cellules avec un format tableau manuel, par exemple).
+    """
+    meta = sh.fetch_sheet_metadata()
+    for sheet in meta.get("sheets", []):
+        if sheet.get("properties", {}).get("sheetId") == sheet_id:
+            tables = sheet.get("tables", [])
+            return tables[0] if tables else None
+    return None
+
+
+def extend_native_table(sh: gspread.Spreadsheet, ws: gspread.Worksheet, total_data_rows: int, header_rows: int = 1) -> bool:
+    """
+    Si la feuille `ws` a une Table native Google Sheets, étend sa plage pour couvrir
+    `header_rows` lignes d'en-tête + `total_data_rows` lignes de données à partir de la
+    ligne de départ actuelle de la table. Ne fait rien (retourne False) s'il n'y a pas de
+    Table native — dans ce cas les nouvelles lignes restent de simples cellules, ce qui est
+    normal si l'utilisateur n'a jamais créé de Table sur cette feuille.
+    """
+    table = get_native_table(sh, ws.id)
+    if not table:
+        return False
+
+    current_range = table["range"]
+    new_range = dict(current_range)
+    new_range["endRowIndex"] = current_range["startRowIndex"] + header_rows + total_data_rows
+
+    sh.batch_update(
+        {
+            "requests": [
+                {
+                    "updateTable": {
+                        "table": {"tableId": table["tableId"], "range": new_range},
+                        "fields": "range",
+                    }
+                }
+            ]
+        }
+    )
+    return True

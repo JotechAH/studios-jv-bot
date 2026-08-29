@@ -20,7 +20,7 @@ d'un outil séparé).
 import json
 import sys
 
-from sheet_client import open_sheet
+from sheet_client import open_sheet, extend_native_table
 
 NAME_HEADER_CANDIDATES = {"nom", "nom du studio", "studio"}
 
@@ -87,6 +87,7 @@ def main() -> None:
 
     ws.resize(rows=len(rows) + 1)
     ws.update("A2", rows, value_input_option="USER_ENTERED")
+    extend_native_table(sh, ws, total_data_rows=len(rows))
 
     print(json.dumps({"added": added, "total_rows": len(rows)}, ensure_ascii=False))
 
