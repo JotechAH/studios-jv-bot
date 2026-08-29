@@ -1,6 +1,6 @@
 """
 Crée ou met à jour la feuille dédiée à un studio, et pose (ou rafraîchit) le lien
-hypertexte depuis la cellule de son nom dans "Nouveau" vers cette feuille.
+hypertexte depuis la cellule de son nom dans la feuille principale vers cette feuille.
 
 Usage :
     python scripts/add_fiche.py '{"nom": "Asobo Studio", "lines": ["Asobo Studio", "", "JEUX SORTIS", "- ..."]}'
@@ -16,34 +16,13 @@ import re
 import sys
 
 import gspread
-from sheet_client import open_sheet
+from sheet_client import col_letter, find_name_column, main_sheet_name, normalize, open_sheet
 
-NAME_HEADER_CANDIDATES = {"nom", "nom du studio", "studio"}
 FORBIDDEN_TAB_CHARS = re.compile(r"[\[\]\:\*\?/\\]")
-
-
-def normalize(value: str) -> str:
-    return (value or "").strip().lower()
 
 
 def sanitize_tab_name(name: str) -> str:
     return FORBIDDEN_TAB_CHARS.sub("", name)[:100]
-
-
-def find_name_column(header: list[str]) -> int:
-    for i, h in enumerate(header):
-        if normalize(h) in NAME_HEADER_CANDIDATES:
-            return i
-    return 0
-
-
-def col_letter(index: int) -> str:
-    letters = ""
-    index += 1
-    while index > 0:
-        index, remainder = divmod(index - 1, 26)
-        letters = chr(65 + remainder) + letters
-    return letters
 
 
 def main() -> None:
@@ -63,7 +42,7 @@ def main() -> None:
     ws_studio.update("A1", [[line] for line in lines], value_input_option="USER_ENTERED")
     gid = ws_studio.id
 
-    ws_nouveau = sh.worksheet("Nouveau")
+    ws_nouveau = sh.worksheet(main_sheet_name())
     all_values = ws_nouveau.get_all_values()
     header = all_values[0] if all_values else []
     name_col = find_name_column(header)

@@ -43,6 +43,38 @@ def open_sheet() -> gspread.Spreadsheet:
     return get_client().open_by_key(spreadsheet_id)
 
 
+def main_sheet_name() -> str:
+    """
+    Nom de la feuille principale (liste des studios). Configurable via
+    STUDIOS_SHEET_NAME pour ne pas avoir à toucher au code si tu renommes la feuille sur
+    ton Drive — mets à jour cette variable d'environnement à la place.
+    """
+    return os.environ.get("STUDIOS_SHEET_NAME", "Liste")
+
+
+NAME_HEADER_CANDIDATES = {"nom", "nom du studio", "studio"}
+
+
+def normalize(value: str) -> str:
+    return (value or "").strip().lower()
+
+
+def find_name_column(header: list) -> int:
+    for i, h in enumerate(header):
+        if normalize(h) in NAME_HEADER_CANDIDATES:
+            return i
+    return 0  # à défaut, on suppose que la première colonne est le nom
+
+
+def col_letter(index: int) -> str:
+    letters = ""
+    index += 1
+    while index > 0:
+        index, remainder = divmod(index - 1, 26)
+        letters = chr(65 + remainder) + letters
+    return letters
+
+
 def get_native_table(sh: gspread.Spreadsheet, sheet_id: int) -> dict | None:
     """
     Retourne l'objet "Table" natif (Insert > Table dans Sheets) défini sur la feuille

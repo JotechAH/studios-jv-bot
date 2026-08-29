@@ -2,7 +2,8 @@
 name: studios-3d-jeuxvideo-fr
 description: >
   Aide à la recherche d'emploi en 3D dans le secteur du jeu vidéo en France, en s'appuyant
-  sur un Google Sheet ("Nouveau" = liste des studios, une feuille dédiée par studio = fiche
+  sur un Google Sheet ("Nouveau"/nom configurable via STUDIOS_SHEET_NAME = liste des studios,
+  une feuille dédiée par studio = fiche
   détaillée), accédé via l'API Google Sheets (gspread) avec un compte de service — pas de
   téléchargement/upload de fichier. Utiliser ce skill dès que l'utilisateur demande de :
   trouver / chercher / ajouter de nouveaux studios de jeux vidéo (3D, art, animation) en
@@ -21,7 +22,9 @@ opération ne transfère que les valeurs concernées (quelques lignes ou une feu
 évite tout problème de taille ou de consommation excessive de tokens.
 
 Le classeur contient :
-- une feuille **"Nouveau"** : le tableau principal, une ligne par studio, trié par ordre
+- une feuille principale (appelée **"Nouveau"** dans les exemples ci-dessous — le nom réel
+  vient de la variable d'environnement `STUDIOS_SHEET_NAME`, "Liste" par défaut ; consulte-la
+  plutôt que de supposer un nom) : le tableau principal, une ligne par studio, trié par ordre
   alphabétique, avec le nom du studio en lien hypertexte vers sa fiche dédiée (si elle existe);
 - une **feuille par studio** (nommée d'après le studio) : la fiche détaillée créée par ce skill.
 
@@ -91,6 +94,31 @@ Déclencheurs typiques : "renseigne-toi sur [Studio]", "fais-moi une fiche sur [
    hypertexte dans "Nouveau" — pas d'étape séparée à faire.
 4. Résumé court dans le chat (2-3 lignes : ce qui est le plus notable) — la fiche complète vit
    dans le Sheet.
+
+## Mode C — Rattrapage en lot des fiches manquantes (routine dédiée)
+
+Déclencheurs typiques : "fais des fiches pour les studios qui n'en ont pas encore", "avance
+sur les fiches manquantes" — et c'est le mode à utiliser pour une **routine programmée**
+séparée de la routine de découverte (Mode A), pour ne pas mélanger recherche de nouveaux
+studios et rédaction de fiches dans la même exécution.
+
+1. **Repère les studios sans fiche**, sans deviner — utilise le script dédié qui compare la
+   cellule du nom à un lien `=HYPERLINK(...)` :
+   ```
+   python scripts/list_missing_fiches.py 5
+   ```
+   L'argument est la taille max du lot (5 par défaut). **Garde ce nombre petit** (3 à 5) sur
+   une routine programmée : chaque studio demande plusieurs recherches web, donc un lot trop
+   grand allonge beaucoup le temps et le coût d'une exécution.
+2. Pour chaque studio renvoyé, applique le Mode B (étapes 2 et 3) — une recherche web puis un
+   appel à `add_fiche.py` par studio (c'est normal ici, contrairement au Mode A : chaque fiche
+   est un contenu propre qui doit être écrit séparément).
+3. Si `list_missing_fiches.py` renvoie une liste vide, dis-le simplement — rien à faire, tous
+   les studios déjà présents ont une fiche.
+4. Résumé court à la fin : combien de fiches créées, lesquelles, et combien il en reste encore
+   à traiter (pas besoin d'un nombre exact — mentionner "quelques-uns" ou une fourchette based
+   on la présence continue de studios sans fiche suffit si tu ne veux pas relancer une lecture
+   complète juste pour compter).
 
 ## Notes générales
 
