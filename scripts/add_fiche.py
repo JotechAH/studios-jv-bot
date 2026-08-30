@@ -64,6 +64,10 @@ FORBIDDEN_TAB_CHARS = re.compile(r"[\[\]\:\*\?/\\]")
 NOT_FOUND_TEXT = "non trouvé"
 NOT_FOUND_RGB = {"red": 152 / 255, "green": 152 / 255, "blue": 155 / 255}  # #98989b
 NORMAL_RGB = {"red": 0, "green": 0, "blue": 0}
+CLOSED_STATUS_TEXT = "fermé"
+TOP_BAND_DEFAULT_RGB = {"red": 209 / 255, "green": 209 / 255, "blue": 212 / 255}  # #d1d1d4
+TOP_BAND_CLOSED_RGB = {"red": 204 / 255, "green": 0, "blue": 0}  # #cc0000
+TOP_BAND_RANGE = {"startRowIndex": 0, "endRowIndex": 1, "startColumnIndex": 0, "endColumnIndex": 21}  # A1:U1
 
 
 def compute_insert_index(sh, studio_name: str) -> int:
@@ -162,6 +166,20 @@ def format_requests_for_updates(sheet_id: int, updates: list) -> list:
     return requests
 
 
+def top_band_request(sheet_id: int, is_closed: bool) -> dict:
+    return {
+        "repeatCell": {
+            "range": {"sheetId": sheet_id, **TOP_BAND_RANGE},
+            "cell": {
+                "userEnteredFormat": {
+                    "backgroundColor": TOP_BAND_CLOSED_RGB if is_closed else TOP_BAND_DEFAULT_RGB
+                }
+            },
+            "fields": "userEnteredFormat.backgroundColor",
+        }
+    }
+
+
 def main() -> None:
     payload = json.loads(sys.argv[1]) if len(sys.argv) > 1 else json.load(sys.stdin)
     studio_name = payload["nom"]
@@ -220,8 +238,11 @@ def main() -> None:
     ws_studio.batch_update(body, value_input_option="USER_ENTERED")
 
     format_requests = format_requests_for_updates(ws_studio.id, updates)
-    if format_requests:
-        sh.batch_update({"requests": format_requests})
+    is_closed = any(
+        str(fields.get(k, "")).strip().lower() == CLOSED_STATUS_TEXT for k in ("type de studio", "studio_type")
+    )
+    format_requests.append(top_band_request(ws_studio.id, is_closed))
+    sh.batch_update({"requests": format_requests})
 
     # Lien hypertexte depuis la feuille principale
     ws_nouveau = sh.worksheet(main_sheet_name())
