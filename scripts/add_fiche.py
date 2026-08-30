@@ -43,6 +43,7 @@ Voir references/fiche_studio_template.md pour la liste exacte des clés de "fiel
 depuis le vrai gabarit) et le détail des sections répétées.
 """
 
+import datetime
 import json
 import re
 import sys
@@ -63,6 +64,26 @@ FORBIDDEN_TAB_CHARS = re.compile(r"[\[\]\:\*\?/\\]")
 NOT_FOUND_TEXT = "non trouvé"
 NOT_FOUND_RGB = {"red": 152 / 255, "green": 152 / 255, "blue": 155 / 255}  # #98989b
 NORMAL_RGB = {"red": 0, "green": 0, "blue": 0}
+
+
+def compute_insert_index(sh, studio_name: str) -> int:
+    """
+    Détermine l'index d'insertion (0-based, sur l'ensemble du classeur) pour qu'un nouvel
+    onglet studio s'intercale au bon endroit : après "Template" et la feuille principale
+    (toujours en position 0 et 1), et parmi les onglets studio déjà présents dans l'ordre
+    alphabétique — celui-ci les suppose déjà correctement ordonnés (création normale, ou
+    correction manuelle de l'utilisateur), on ne les retrie pas, on trouve juste la bonne
+    place pour le nouveau.
+    """
+    all_ws = sh.worksheets()
+    target_norm = normalize(studio_name)
+    reserved_names = {TEMPLATE_SHEET_NAME, main_sheet_name()}
+    for i, w in enumerate(all_ws):
+        if w.title in reserved_names:
+            continue
+        if normalize(w.title) > target_norm:
+            return i
+    return len(all_ws)
 
 
 def sanitize_tab_name(name: str) -> str:
@@ -161,7 +182,10 @@ def main() -> None:
             template_ws = sh.worksheet(TEMPLATE_SHEET_NAME)
         except gspread.WorksheetNotFound:
             raise RuntimeError(f'Feuille gabarit "{TEMPLATE_SHEET_NAME}" introuvable dans le classeur.')
-        ws_studio = sh.duplicate_sheet(source_sheet_id=template_ws.id, new_sheet_name=tab_name)
+        insert_index = compute_insert_index(sh, studio_name)
+        ws_studio = sh.duplicate_sheet(
+            source_sheet_id=template_ws.id, insert_sheet_index=insert_index, new_sheet_name=tab_name
+        )
         existing = False
 
     # Toujours relire les placeholders depuis "Template" (jamais modifié) : marche
@@ -170,6 +194,12 @@ def main() -> None:
     template_ws = sh.worksheet(TEMPLATE_SHEET_NAME)
     template_cells = values_to_cell_dict(template_ws.get_all_values())
     unique_fields = scan_unique_placeholders(template_cells)
+
+    # Champs calculés par le script, jamais par la recherche — on écrase toute valeur que le
+    # payload aurait pu fournir pour ces clés, elles ne doivent pas dépendre de la recherche.
+    fields["update_date"] = datetime.date.today().strftime("%d/%m/%Y")
+    fields["nombre_de_titre"] = str(min(len(jeux_sortis), len(JEUX_SORTIS_SLOTS)))
+    fields["nombre_de_projets"] = str(min(len(projets_dev), len(PROJETS_DEV_SLOTS)))
 
     updates = []
     seen_coords = set()

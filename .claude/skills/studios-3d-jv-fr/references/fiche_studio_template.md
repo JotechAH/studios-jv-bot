@@ -98,6 +98,25 @@ gabarit) doivent utiliser une valeur parmi : `"Indépendant"`, `"AAA"`, `"AA"`, 
 studio a fermé, mets `"Fermé"` dans ces deux clés à la place — et mentionne-le aussi dans
 `actualites` (ex. `"2023 — Fermeture du studio"`) si tu as une date.
 
+## Champ `studio_groupe`
+
+Si le studio est indépendant et n'appartient à aucun groupe, mets `"Aucun"` — jamais
+`"non trouvé"` pour un studio confirmé indépendant, ce n'est pas une absence d'info. Si ce
+studio indépendant a des partenariats éditoriaux ponctuels (un éditeur qui publie certains de
+ses jeux sans en être propriétaire), précise-le entre parenthèses, ex. :
+`"Aucun (partenariat éditorial ponctuel avec Focus Entertainment)"`. Si le studio appartient
+réellement à un groupe/maison mère, mets le nom du groupe normalement.
+
+## Champs calculés automatiquement par le script (ne pas fournir, ignorés de toute façon)
+
+`add_fiche.py` calcule lui-même ces 3 clés à chaque exécution — inutile de les rechercher ou
+de les mettre dans `fields`, toute valeur fournie serait de toute façon écrasée :
+- `update_date` : date du jour (création ou dernière modification de la fiche).
+- `nombre_de_titre` : nombre de jeux effectivement écrits dans `jeux_sortis` (plafonné aux 8
+  emplacements disponibles).
+- `nombre_de_projets` : nombre de projets effectivement écrits dans `projets_dev` (plafonné
+  aux 8 emplacements disponibles).
+
 ## Règles de contenu
 
 - Une info non trouvée = `"non trouvé"`, jamais une supposition présentée comme un fait.
