@@ -82,18 +82,40 @@ Déclencheurs typiques : "renseigne-toi sur [Studio]", "fais-moi une fiche sur [
 
 1. Si le studio n'est pas encore dans "Nouveau", ajoute-le d'abord (Mode A, étape 5, avec au
    minimum son nom).
-2. **Recherche web** sur le studio, en couvrant si possible : jeux sortis, actualités
-   récentes, stack technique, direction artistique, culture/taille d'équipe. Cite tes sources.
-   N'invente rien : une info non trouvée reste absente. Suis la structure de
-   `references/fiche_studio_template.md`.
-3. **Écris la fiche et pose le lien** en un seul appel :
+2. **Recherche web** sur le studio, en couvrant si possible : jeux sortis, direction
+   artistique, recrutement, stack technique, projets en développement, contacts clés,
+   actualités récentes, culture/équipe, actionnariat/financement. Cite tes sources dans les
+   champs dédiés (site officiel, AFJV, Jobs in Games, page carrières, LinkedIn). N'invente
+   rien : une info non trouvée s'écrit `"non trouvé"` littéralement — le script la mettra lui
+   -même en italique gris, rien à faire de plus. Les clés exactes attendues, l'ordre
+   chronologique attendu pour les listes, et les valeurs autorisées pour le type de studio
+   sont dans `references/fiche_studio_template.md` (généré depuis le vrai gabarit "Template"
+   du classeur, fait à la main par l'utilisateur — ne pas en inventer d'autres).
+3. **Si la fiche existe déjà** (rafraîchissement), refais la recherche complète plutôt que de
+   ne chercher que les nouveautés — les listes (jeux sortis, actualités, projets) doivent être
+   fournies réordonnées et complètes à chaque appel, du plus récent au plus ancien, sinon une
+   actualité plus récente qu'une ancienne déjà en place ne la remplacera pas.
+4. **Écris la fiche et pose le lien** en un seul appel :
    ```
-   python scripts/add_fiche.py '<JSON: {"nom": "...", "lines": ["...", "...", ...]}>'
+   python scripts/add_fiche.py '<JSON : voir references/fiche_studio_template.md>'
    ```
-   Ce script crée ou met à jour la feuille dédiée, **et** rafraîchit automatiquement le lien
-   hypertexte dans "Nouveau" — pas d'étape séparée à faire.
-4. Résumé court dans le chat (2-3 lignes : ce qui est le plus notable) — la fiche complète vit
+   Ce script crée la fiche si elle n'existe pas (en dupliquant "Template"), ou la rafraîchit
+   si elle existe déjà — **et** met à jour le lien hypertexte dans "Nouveau". Il ne touche
+   jamais aux champs personnels (priorité, candidature, verdict...) ni au logo : ce sont des
+   cellules sans `{...}` dans le gabarit, elles sont ignorées automatiquement, pas besoin de
+   précaution particulière de ta part au-delà de ne pas les mettre dans le JSON.
+5. Si la sortie JSON du script mentionne `items_dropped_no_room`, préviens l'utilisateur que
+   certains éléments (trop de jeux/actus/contacts/projets pour les emplacements disponibles)
+   n'ont pas pu être écrits — le gabarit fait main n'a pas de croissance automatique.
+6. Résumé court dans le chat (2-3 lignes : ce qui est le plus notable) — la fiche complète vit
    dans le Sheet.
+
+### Pré-requis pour Mode B/C : le gabarit "Template"
+
+La feuille **"Template"** est construite et entretenue à la main par l'utilisateur dans
+Google Sheets — ce skill ne la génère ni ne la modifie jamais. Si `add_fiche.py` échoue en
+disant qu'elle est introuvable, il n'y a rien à corriger côté script : demande à l'utilisateur
+de vérifier le nom de l'onglet dans son classeur.
 
 ## Mode C — Rattrapage en lot des fiches manquantes (routine dédiée)
 
@@ -126,6 +148,6 @@ studios et rédaction de fiches dans la même exécution.
   l'utilisateur.
 - Un nom de feuille (onglet) Google Sheets a des contraintes (pas de `[ ] : * ? / \`, 100
   caractères max) — `add_fiche.py` nettoie déjà le nom pour le titre d'onglet ; garde le nom
-  complet et correct dans le contenu de la fiche elle-même (première ligne de `lines`).
+  complet et correct dans `fields["Studio's Name"]` (le contenu de la fiche elle-même).
 - Pour une exécution programmée (routine), le prompt doit rester générique et ne pas contenir
   d'info sensible — les identifiants viennent des secrets de l'environnement, pas du prompt.
