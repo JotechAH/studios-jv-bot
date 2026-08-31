@@ -39,15 +39,28 @@ def main() -> None:
 
     sh = open_sheet()
     ws = sh.worksheet(main_sheet_name())
-    values = ws.get_all_values()
-    if not values:
-        raise RuntimeError(f'La feuille "{main_sheet_name()}" est vide — pas d\'en-tête trouvé.')
 
-    header = values[0]
-    rows = values[1:]
+    # Deux lectures : les valeurs affichées (pour trier/dédupliquer sur le nom lisible) et
+    # les formules brutes (pour ne jamais perdre un =HYPERLINK(...) existant en réécrivant
+    # la feuille — get_all_values() seul renvoie le texte affiché et écraserait les liens).
+    display_values = ws.get_all_values()
+    if not display_values:
+        raise RuntimeError(f'La feuille "{main_sheet_name()}" est vide — pas d\'en-tête trouvé.')
+    formula_values = ws.get_all_values(value_render_option="FORMULA")
+
+    header = display_values[0]
     name_col = find_name_column(header)
 
-    existing_names = {normalize(r[name_col]) for r in rows if len(r) > name_col}
+    # Chaque ligne existante est gardée sous sa forme BRUTE (formule si elle en a une), mais
+    # on utilise le nom AFFICHÉ (pas la formule) comme clé de tri/déduplication.
+    rows = []  # liste de (nom_affiché, ligne_brute)
+    for i in range(1, len(display_values)):
+        display_row = display_values[i]
+        raw_row = formula_values[i] if i < len(formula_values) else display_row
+        name = display_row[name_col] if len(display_row) > name_col else ""
+        rows.append((name, raw_row))
+
+    existing_names = {normalize(name) for name, _ in rows}
 
     added = []
     for studio in new_studios:
@@ -70,7 +83,7 @@ def main() -> None:
         if not new_row[name_col]:
             new_row[name_col] = nom
 
-        rows.append(new_row)
+        rows.append((nom, new_row))
         existing_names.add(normalize(nom))
         added.append(nom)
 
@@ -78,13 +91,14 @@ def main() -> None:
         print(json.dumps({"added": [], "total_rows": len(rows)}, ensure_ascii=False))
         return
 
-    rows.sort(key=lambda r: normalize(r[name_col]) if len(r) > name_col else "")
+    rows.sort(key=lambda item: normalize(item[0]))
+    final_rows = [row for _, row in rows]
 
-    ws.resize(rows=len(rows) + 1)
-    ws.update("A2", rows, value_input_option="USER_ENTERED")
-    extend_native_table(sh, ws, total_data_rows=len(rows))
+    ws.resize(rows=len(final_rows) + 1)
+    ws.update("A2", final_rows, value_input_option="USER_ENTERED")
+    extend_native_table(sh, ws, total_data_rows=len(final_rows))
 
-    print(json.dumps({"added": added, "total_rows": len(rows)}, ensure_ascii=False))
+    print(json.dumps({"added": added, "total_rows": len(final_rows)}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
